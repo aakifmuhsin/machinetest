@@ -6,6 +6,7 @@ import '../constants/app_colors.dart';
 import '../widgets/video_player_widget.dart';
 import '../widgets/feed_item.dart';
 import 'add_feeds_screen.dart';
+import 'login_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -23,6 +24,79 @@ class _HomeScreenState extends State<HomeScreen> {
       feedProvider.loadCategories();
       feedProvider.loadFeeds();
     });
+  }
+
+  void _showLogoutDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: AppColors.cardBackground,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          title: const Text(
+            'Logout',
+            style: TextStyle(
+              color: AppColors.primaryText,
+              fontFamily: 'Montserrat',
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          content: const Text(
+            'Are you sure you want to logout?',
+            style: TextStyle(
+              color: AppColors.secondaryText,
+              fontFamily: 'Montserrat',
+              fontSize: 14,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text(
+                'Cancel',
+                style: TextStyle(
+                  color: AppColors.secondaryText,
+                  fontFamily: 'Montserrat',
+                  fontSize: 14,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await _handleLogout();
+              },
+              child: const Text(
+                'Logout',
+                style: TextStyle(
+                  color: AppColors.accentRed,
+                  fontFamily: 'Montserrat',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _handleLogout() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    await authProvider.logout();
+    
+    if (mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        (route) => false,
+      );
+    }
   }
 
   @override
@@ -93,16 +167,19 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               // Profile picture
-              Container(
-                width: 40,
-                height: 40,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.cardBackground,
-                ),
-                child: const Icon(
-                  Icons.person,
-                  color: AppColors.primaryText,
+              GestureDetector(
+                onTap: _showLogoutDialog,
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.cardBackground,
+                  ),
+                  child: const Icon(
+                    Icons.person,
+                    color: AppColors.primaryText,
+                  ),
                 ),
               ),
             ],
