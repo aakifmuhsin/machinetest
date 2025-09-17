@@ -50,6 +50,7 @@ class _HomeScreenState extends State<HomeScreen> {
           );
         },
         backgroundColor: AppColors.accentRed,
+        shape: const CircleBorder(),
         child: const Icon(
           Icons.add,
           color: Colors.white,
