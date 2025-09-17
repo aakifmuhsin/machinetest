@@ -65,39 +65,47 @@ class _LoginScreenState extends State<LoginScreen> {
                       children: [
                         // Country code field
                         Container(
-                          width: 80,
-                          child: TextFormField(
-                            controller: _countryCodeController,
-                            style: const TextStyle(
-    fontFamily: 'Montserrat',color: AppColors.primaryText),
-                            decoration: InputDecoration(
-                              hintText: '+91',
-                              hintStyle: const TextStyle(
-    fontFamily: 'Montserrat',color: AppColors.hintText),
-                              suffixIcon: const Icon(
-                                Icons.keyboard_arrow_down,
-                                color: AppColors.primaryText,
-                                size: 20,
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: AppColors.borderColor),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: AppColors.borderColor),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: AppColors.accentRed),
-                              ),
-                            ),
-                            readOnly: true,
-                            onTap: () {
-                              // TODO: Show country code picker
-                            },
-                          ),
-                        ),
+  width: 80,
+  child: TextFormField(
+    controller: _countryCodeController,
+    style: const TextStyle(
+      fontFamily: 'Montserrat',
+      color: AppColors.primaryText,
+    ),
+    decoration: InputDecoration(
+      hintText: '+91',
+      hintStyle: const TextStyle(
+        fontFamily: 'Montserrat',
+        color: AppColors.hintText,
+      ),
+      suffix: Padding(
+        padding: const EdgeInsets.only(left: 4.0),
+        child: Icon(
+          Icons.keyboard_arrow_down,
+          color: AppColors.primaryText,
+          size: 20,
+        ),
+      ),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.borderColor),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.borderColor),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.accentRed),
+      ),
+    ),
+    readOnly: true,
+    onTap: () {
+      // TODO: Show country code picker
+    },
+  ),
+),
+
                         const SizedBox(width: 12),
                         // Phone number field
                         Expanded(
@@ -141,60 +149,64 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const Spacer(),
               // Continue button
-              SizedBox(
-                width: double.infinity,
-                child: Consumer<AuthProvider>(
-                  builder: (context, authProvider, child) {
-                    return TextButton(
-                      onPressed: authProvider.isLoading ? null : _handleLogin,
-                      style: TextButton.styleFrom(
-                        backgroundColor: Colors.black,
-                        foregroundColor: AppColors.primaryText,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          side: const BorderSide(color: AppColors.primaryButtonBorder),
-                        ),
+              Center(
+  child: SizedBox(
+    width: 160.0, // Set desired button width
+    child: Consumer<AuthProvider>(
+      builder: (context, authProvider, child) {
+        return TextButton(
+          onPressed: authProvider.isLoading ? null : _handleLogin,
+          style: TextButton.styleFrom(
+            backgroundColor: Colors.black,
+            foregroundColor: AppColors.primaryText,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(50), // Circular corners
+              side: const BorderSide(color: AppColors.primaryButtonBorder),
+            ),
+          ),
+          child: authProvider.isLoading
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryText),
+                  ),
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      'Continue',
+                      style: TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
                       ),
-                      child: authProvider.isLoading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryText),
-                              ),
-                            )
-                          : Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text(
-                                  'Continue',
-                                  style: TextStyle(
-    fontFamily: 'Montserrat',
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                Container(
-                                  width: 32,
-                                  height: 32,
-                                  decoration: const BoxDecoration(
-                                    color: AppColors.accentRed,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.arrow_forward,
-                                    color: AppColors.primaryText,
-                                    size: 16,
-                                  ),
-                                ),
-                              ],
-                            ),
-                    );
-                  },
+                    ),
+                    const SizedBox(width: 12),
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: const BoxDecoration(
+                        color: AppColors.accentRed,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.arrow_forward,
+                        color: AppColors.primaryText,
+                        size: 16,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
+        );
+      },
+    ),
+  ),
+),
+
               const SizedBox(height: 20),
               // Error message
               Consumer<AuthProvider>(

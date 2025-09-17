@@ -28,6 +28,7 @@ class _AddFeedsScreenState extends State<AddFeedsScreen> {
   String? _selectedVideoName;
   String? _selectedThumbnailName;
   List<int> _selectedCategories = [];
+  bool _isSubmitting = false;
 
   @override
   void initState() {
@@ -73,9 +74,9 @@ class _AddFeedsScreenState extends State<AddFeedsScreen> {
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: TextButton(
-              onPressed: _handleSubmit,
+              onPressed: _isSubmitting ? null : _handleSubmit,
               style: TextButton.styleFrom(
-                backgroundColor: Colors.black,
+                backgroundColor: _isSubmitting ? Colors.grey : Colors.black,
                 foregroundColor: AppColors.primaryText,
                 padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                 shape: const StadiumBorder(side: BorderSide(
@@ -83,14 +84,23 @@ class _AddFeedsScreenState extends State<AddFeedsScreen> {
           width: 1.5, // optional: adjust thickness
         ),),
               ),
-              child: const Text(
-                'Share Post',
-                style: TextStyle(
+              child: _isSubmitting
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryText),
+                      ),
+                    )
+                  : const Text(
+                      'Share Post',
+                      style: TextStyle(
     fontFamily: 'Montserrat',
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
             ),
           ),
         ],
@@ -147,7 +157,7 @@ class _AddFeedsScreenState extends State<AddFeedsScreen> {
               ),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: _selectedVideo != null
+            child: (_selectedVideo != null || _selectedVideoBytes != null)
                 ? Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -159,7 +169,7 @@ class _AddFeedsScreenState extends State<AddFeedsScreen> {
                       ),
                       SizedBox(height: 12),
                       Text(
-                        kIsWeb ? _selectedVideoName ?? 'Unknown' : _selectedVideo!.path.split(RegExp(r'[\\/]')).last,
+                        kIsWeb ? (_selectedVideoName ?? 'Unknown') : _selectedVideo!.path.split(RegExp(r'[\\/]')).last,
                         style: const TextStyle(
     fontFamily: 'Montserrat',
                           color: AppColors.secondaryText,
@@ -176,6 +186,20 @@ class _AddFeedsScreenState extends State<AddFeedsScreen> {
                           fontSize: 14,
                         ),
                       ),
+                      const SizedBox(height: 8),
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            _selectedVideo = null;
+                            _selectedVideoBytes = null;
+                            _selectedVideoName = null;
+                          });
+                        },
+                        child: const Text('Remove', style: TextStyle(
+    fontFamily: 'Montserrat',
+                          color: AppColors.accentRed,
+                        )),
+                      )
                     ],
                   )
                 : Column(
@@ -231,19 +255,22 @@ class _AddFeedsScreenState extends State<AddFeedsScreen> {
               ),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: _selectedThumbnail != null
+            child: (_selectedThumbnail != null || _selectedThumbnailBytes != null)
                 ? Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      SvgPicture.asset(
-                        'assests/images/image_outlined.svg',
-                        width: 35,
-                        height: 25,
-                        colorFilter: const ColorFilter.mode(AppColors.primaryText, BlendMode.srcIn),
-                      ),
+                      if (!kIsWeb && _selectedThumbnail != null)
+                        const Icon(Icons.image, color: AppColors.primaryText)
+                      else
+                        SvgPicture.asset(
+                          'assests/images/image_outlined.svg',
+                          width: 35,
+                          height: 25,
+                          colorFilter: const ColorFilter.mode(AppColors.primaryText, BlendMode.srcIn),
+                        ),
                       const SizedBox(height: 8),
                       Text(
-                        kIsWeb ? _selectedThumbnailName ?? 'Unknown' : _selectedThumbnail!.path.split(RegExp(r'[\\/]')).last,
+                        kIsWeb ? (_selectedThumbnailName ?? 'Unknown') : _selectedThumbnail!.path.split(RegExp(r'[\\/]')).last,
                         style: const TextStyle(
     fontFamily: 'Montserrat',
                           color: AppColors.secondaryText,
@@ -260,6 +287,20 @@ class _AddFeedsScreenState extends State<AddFeedsScreen> {
                           fontSize: 14,
                         ),
                       ),
+                      const SizedBox(height: 8),
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            _selectedThumbnail = null;
+                            _selectedThumbnailBytes = null;
+                            _selectedThumbnailName = null;
+                          });
+                        },
+                        child: const Text('Remove', style: TextStyle(
+    fontFamily: 'Montserrat',
+                          color: AppColors.accentRed,
+                        )),
+                      )
                     ],
                   )
                 : Row(
@@ -476,10 +517,33 @@ class _AddFeedsScreenState extends State<AddFeedsScreen> {
   Future<void> _pickThumbnail() async {
     print('🖼️ _pickThumbnail called');
     try {
-      final XFile? image = await _imagePicker.pickImage(source: ImageSource.gallery);
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        preferredCameraDevice: CameraDevice.rear,
+        imageQuality: 90,
+      );
       if (image != null) {
         print('✅ Thumbnail selected: ${image.path}');
         print('📁 Thumbnail name: ${image.name}');
+        // Validate extension (server does not accept SVG)
+        final String lowerName = image.name.toLowerCase();
+        const allowedExts = [
+          '.bmp', '.dib', '.gif', '.jfif', '.jpe', '.jpg', '.jpeg', '.png', '.apng',
+          '.tif', '.tiff', '.webp', '.ico'
+        ];
+        final bool isAllowed = allowedExts.any((ext) => lowerName.endsWith(ext));
+        if (!isAllowed) {
+          print('❌ Disallowed thumbnail extension: $lowerName');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Unsupported thumbnail type. Please select JPG/PNG image.'),
+                backgroundColor: AppColors.error,
+              ),
+            );
+          }
+          return;
+        }
         
         if (kIsWeb) {
           // For web, read the file as bytes
@@ -517,107 +581,121 @@ class _AddFeedsScreenState extends State<AddFeedsScreen> {
   Future<void> _handleSubmit() async {
     print('📝 AddFeedsScreen._handleSubmit called');
     
+    if (_isSubmitting) return; // Prevent multiple submissions
+    
     if (!_formKey.currentState!.validate()) {
       print('❌ Form validation failed');
       return;
     }
     print('✅ Form validation passed');
-
-    if (kIsWeb) {
-      if (_selectedVideoBytes == null) {
-        print('❌ No video selected (web)');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please select a video'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-        return;
-      }
-      print('✅ Video selected (web): ${_selectedVideoName}');
-      
-      if (_selectedThumbnailBytes == null) {
-        print('❌ No thumbnail selected (web)');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please select a thumbnail'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-        return;
-      }
-      print('✅ Thumbnail selected (web): ${_selectedThumbnailName}');
-    } else {
-      if (_selectedVideo == null) {
-        print('❌ No video selected (mobile)');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please select a video'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-        return;
-      }
-      print('✅ Video selected (mobile): ${_selectedVideo!.path}');
-      
-      if (_selectedThumbnail == null) {
-        print('❌ No thumbnail selected (mobile)');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please select a thumbnail'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-        return;
-      }
-      print('✅ Thumbnail selected (mobile): ${_selectedThumbnail!.path}');
-    }
-
-    if (_selectedCategories.isEmpty) {
-      print('❌ No categories selected');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select at least one category'),
-          backgroundColor: AppColors.error,
-        ),
-      );
-      return;
-    }
-    print('✅ Categories selected: $_selectedCategories');
-
-    print('📤 Calling FeedProvider.createFeed...');
-    final feedProvider = Provider.of<FeedProvider>(context, listen: false);
     
-    final success = await feedProvider.createFeed(
-      videoPath: kIsWeb ? null : _selectedVideo?.path,
-      thumbnailPath: kIsWeb ? null : _selectedThumbnail?.path,
-      videoBytes: kIsWeb ? _selectedVideoBytes : null,
-      thumbnailBytes: kIsWeb ? _selectedThumbnailBytes : null,
-      videoName: kIsWeb ? _selectedVideoName : null,
-      thumbnailName: kIsWeb ? _selectedThumbnailName : null,
-      description: _descriptionController.text.trim(),
-      categories: _selectedCategories,
-    );
+    setState(() {
+      _isSubmitting = true;
+    });
 
-    print('📥 FeedProvider.createFeed result: $success');
+    try {
+      if (kIsWeb) {
+        if (_selectedVideoBytes == null) {
+          print('❌ No video selected (web)');
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please select a video'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+          return;
+        }
+        print('✅ Video selected (web): ${_selectedVideoName}');
+        
+        if (_selectedThumbnailBytes == null) {
+          print('❌ No thumbnail selected (web)');
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please select a thumbnail'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+          return;
+        }
+        print('✅ Thumbnail selected (web): ${_selectedThumbnailName}');
+      } else {
+        if (_selectedVideo == null) {
+          print('❌ No video selected (mobile)');
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please select a video'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+          return;
+        }
+        print('✅ Video selected (mobile): ${_selectedVideo!.path}');
+        
+        if (_selectedThumbnail == null) {
+          print('❌ No thumbnail selected (mobile)');
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please select a thumbnail'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+          return;
+        }
+        print('✅ Thumbnail selected (mobile): ${_selectedThumbnail!.path}');
+      }
 
-    if (success && mounted) {
-      print('✅ Feed creation successful, showing success message');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Feed created successfully!'),
-          backgroundColor: AppColors.success,
-        ),
+      if (_selectedCategories.isEmpty) {
+        print('❌ No categories selected');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please select at least one category'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+        return;
+      }
+      print('✅ Categories selected: $_selectedCategories');
+
+      print('📤 Calling FeedProvider.createFeed...');
+      final feedProvider = Provider.of<FeedProvider>(context, listen: false);
+      
+      final success = await feedProvider.createFeed(
+        videoPath: kIsWeb ? null : _selectedVideo?.path,
+        thumbnailPath: kIsWeb ? null : _selectedThumbnail?.path,
+        videoBytes: kIsWeb ? _selectedVideoBytes : null,
+        thumbnailBytes: kIsWeb ? _selectedThumbnailBytes : null,
+        videoName: kIsWeb ? _selectedVideoName : null,
+        thumbnailName: kIsWeb ? _selectedThumbnailName : null,
+        description: _descriptionController.text.trim(),
+        categories: _selectedCategories,
       );
-      Navigator.of(context).pop();
-    } else if (mounted) {
-      print('❌ Feed creation failed: ${feedProvider.error}');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(feedProvider.error ?? 'Failed to create feed'),
-          backgroundColor: AppColors.error,
-        ),
-      );
+
+      print('📥 FeedProvider.createFeed result: $success');
+
+      if (success && mounted) {
+        print('✅ Feed creation successful, showing success message');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Feed created successfully!'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+        Navigator.of(context).pop();
+      } else if (mounted) {
+        print('❌ Feed creation failed: ${feedProvider.error}');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(feedProvider.error ?? 'Failed to create feed'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
     }
   }
 }

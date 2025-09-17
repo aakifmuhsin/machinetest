@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import '../models/api_response.dart';
+import 'package:http_parser/http_parser.dart';
 import '../models/user.dart';
 import '../models/feed.dart';
 import '../models/category.dart';
@@ -57,28 +59,50 @@ class ApiService {
     required String phone,
   }) async {
     try {
-      final response = await http.post(
-        _uri('otp_verified'),
-        headers: _headers,
-        body: jsonEncode({
-          'country_code': countryCode,
-          'phone': phone,
-        }),
-      );
+      // Use form-encoded body; many OTP endpoints expect this rather than JSON
+      final uri = _uri('otp_verified');
+      final headers = {
+        'Accept': 'application/json',
+        // Do NOT set Content-Type to application/json here; let http encode as form
+        'Content-Type': 'application/x-www-form-urlencoded',
+      };
+      final body = {
+        'country_code': countryCode,
+        'phone': phone,
+      };
+
+      // Set a reasonable timeout and a simple retry once on DNS failures
+      Future<http.Response> send() => http.post(uri, headers: headers, body: body).timeout(const Duration(seconds: 15));
+      http.Response response;
+      try {
+        response = await send();
+      } on SocketException catch (e) {
+        // ignore: avoid_print
+        print('verifyOtp socket exception (first attempt): $e');
+        response = await send();
+      } on TimeoutException catch (e) {
+        // ignore: avoid_print
+        print('verifyOtp timeout (first attempt): $e');
+        response = await send();
+      }
 
       // Debug: log raw response
       // ignore: avoid_print
-      print('otp_verified statusCode=${response.statusCode}');
+      print('verifyOtp → POST $uri');
       // ignore: avoid_print
-      print('otp_verified body=${response.body}');
+      print('verifyOtp status=${response.statusCode} headers=${response.headers}');
+      // ignore: avoid_print
+      print('verifyOtp body=${response.body}');
 
-      final dynamic decoded = jsonDecode(response.body);
-      final Map<String, dynamic> data = decoded is Map<String, dynamic>
-          ? decoded
-          : <String, dynamic>{'raw': decoded};
+      Map<String, dynamic> data;
+      try {
+        final decoded = jsonDecode(response.body);
+        data = decoded is Map<String, dynamic> ? decoded : <String, dynamic>{'raw': decoded};
+      } catch (_) {
+        data = <String, dynamic>{'raw': response.body};
+      }
 
       if (response.statusCode == 200 || response.statusCode == 202) {
-        // Some APIs return a boolean field like `status` to indicate success.
         final bool status = (data['status'] == true) || (data['success'] == true);
         if (status || data.containsKey('token')) {
           return ApiResponse.success(data, message: 'OTP verified successfully');
@@ -93,6 +117,8 @@ class ApiService {
         message: 'Error',
       );
     } catch (e) {
+      // ignore: avoid_print
+      print('verifyOtp exception: $e');
       return ApiResponse.error('Network error: $e');
     }
   }
@@ -204,6 +230,7 @@ class ApiService {
           'video',
           videoBytes,
           filename: videoName,
+          contentType: _inferMediaType(videoName),
         ));
         
         print('📎 Adding thumbnail file (web)...');
@@ -211,6 +238,7 @@ class ApiService {
           'image',
           thumbnailBytes,
           filename: thumbnailName,
+          contentType: _inferMediaType(thumbnailName),
         ));
       } else {
         // Mobile: Use File
@@ -230,10 +258,18 @@ class ApiService {
         }
         
         print('📎 Adding video file (mobile)...');
-        request.files.add(await http.MultipartFile.fromPath('video', video.path));
+        request.files.add(await http.MultipartFile.fromPath(
+          'video',
+          video.path,
+          contentType: _inferMediaType(video.path),
+        ));
         
         print('📎 Adding thumbnail file (mobile)...');
-        request.files.add(await http.MultipartFile.fromPath('image', thumbnail.path));
+        request.files.add(await http.MultipartFile.fromPath(
+          'image',
+          thumbnail.path,
+          contentType: _inferMediaType(thumbnail.path),
+        ));
       }
       
       print('📝 Adding form fields...');
@@ -251,7 +287,7 @@ class ApiService {
       final data = jsonDecode(responseBody);
       print('📊 Parsed data: $data');
       
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 202) {
         print('✅ Feed created successfully');
         return ApiResponse.success(data, message: 'Feed created successfully');
       } else {
@@ -267,5 +303,21 @@ class ApiService {
       return ApiResponse.error('Network error: $e');
     }
   }
+}
+
+// Infer MIME type from filename extension for multipart uploads
+MediaType _inferMediaType(String? filename) {
+  final fallback = MediaType('application', 'octet-stream');
+  if (filename == null) return fallback;
+  final lower = filename.toLowerCase();
+  if (lower.endsWith('.mp4')) return MediaType('video', 'mp4');
+  if (lower.endsWith('.mov')) return MediaType('video', 'quicktime');
+  if (lower.endsWith('.webm')) return MediaType('video', 'webm');
+  if (lower.endsWith('.mkv')) return MediaType('video', 'x-matroska');
+  if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return MediaType('image', 'jpeg');
+  if (lower.endsWith('.png')) return MediaType('image', 'png');
+  if (lower.endsWith('.gif')) return MediaType('image', 'gif');
+  if (lower.endsWith('.svg')) return MediaType('image', 'svg+xml');
+  return fallback;
 }
 
