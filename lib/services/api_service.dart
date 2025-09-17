@@ -77,22 +77,10 @@ class ApiService {
       try {
         response = await send();
       } on SocketException catch (e) {
-        // ignore: avoid_print
-        print('verifyOtp socket exception (first attempt): $e');
         response = await send();
       } on TimeoutException catch (e) {
-        // ignore: avoid_print
-        print('verifyOtp timeout (first attempt): $e');
         response = await send();
       }
-
-      // Debug: log raw response
-      // ignore: avoid_print
-      print('verifyOtp → POST $uri');
-      // ignore: avoid_print
-      print('verifyOtp status=${response.statusCode} headers=${response.headers}');
-      // ignore: avoid_print
-      print('verifyOtp body=${response.body}');
 
       Map<String, dynamic> data;
       try {
@@ -117,8 +105,6 @@ class ApiService {
         message: 'Error',
       );
     } catch (e) {
-      // ignore: avoid_print
-      print('verifyOtp exception: $e');
       return ApiResponse.error('Network error: $e');
     }
   }
@@ -188,44 +174,23 @@ class ApiService {
     required List<int> categories,
   }) async {
     try {
-      print('🚀 Starting createFeed API call...');
-      if (kIsWeb) {
-        print('🌐 Running on Web');
-        print('📁 Video name: $videoName');
-        print('📁 Thumbnail name: $thumbnailName');
-        print('📁 Video bytes: ${videoBytes?.length} bytes');
-        print('📁 Thumbnail bytes: ${thumbnailBytes?.length} bytes');
-      } else {
-        print('📱 Running on Mobile');
-        print('📁 Video path: ${video?.path}');
-        print('📁 Thumbnail path: ${thumbnail?.path}');
-      }
-      print('📝 Description: $description');
-      print('🏷️ Categories: $categories');
-      print('🔑 Token: ${_token != null ? "Present" : "Missing"}');
-      
       var request = http.MultipartRequest(
         'POST',
         _uri('my_feed'),
       );
       
-      print('🌐 API URL: ${_uri('my_feed')}');
       
       request.headers.addAll(_multipartHeaders);
-      print('📋 Headers: ${request.headers}');
       
       if (kIsWeb) {
         // Web: Use bytes
         if (videoBytes == null || videoName == null) {
-          print('❌ Video bytes or name missing');
           return ApiResponse.error('Video file not found');
         }
         if (thumbnailBytes == null || thumbnailName == null) {
-          print('❌ Thumbnail bytes or name missing');
           return ApiResponse.error('Thumbnail file not found');
         }
         
-        print('📎 Adding video file (web)...');
         request.files.add(http.MultipartFile.fromBytes(
           'video',
           videoBytes,
@@ -233,7 +198,6 @@ class ApiService {
           contentType: _inferMediaType(videoName),
         ));
         
-        print('📎 Adding thumbnail file (web)...');
         request.files.add(http.MultipartFile.fromBytes(
           'image',
           thumbnailBytes,
@@ -243,28 +207,23 @@ class ApiService {
       } else {
         // Mobile: Use File
         if (video == null || thumbnail == null) {
-          print('❌ Video or thumbnail file missing');
           return ApiResponse.error('Files not found');
         }
         
         // Check if files exist
         if (!await video.exists()) {
-          print('❌ Video file does not exist: ${video.path}');
           return ApiResponse.error('Video file not found');
         }
         if (!await thumbnail.exists()) {
-          print('❌ Thumbnail file does not exist: ${thumbnail.path}');
           return ApiResponse.error('Thumbnail file not found');
         }
         
-        print('📎 Adding video file (mobile)...');
         request.files.add(await http.MultipartFile.fromPath(
           'video',
           video.path,
           contentType: _inferMediaType(video.path),
         ));
         
-        print('📎 Adding thumbnail file (mobile)...');
         request.files.add(await http.MultipartFile.fromPath(
           'image',
           thumbnail.path,
@@ -272,34 +231,24 @@ class ApiService {
         ));
       }
       
-      print('📝 Adding form fields...');
       request.fields['desc'] = description;
       request.fields['category'] = jsonEncode(categories);
       
-      print('📤 Sending request...');
       final response = await request.send();
-      print('📥 Response status: ${response.statusCode}');
-      print('📥 Response headers: ${response.headers}');
       
       final responseBody = await response.stream.bytesToString();
-      print('📥 Response body: $responseBody');
       
       final data = jsonDecode(responseBody);
-      print('📊 Parsed data: $data');
       
       if (response.statusCode == 200 || response.statusCode == 202) {
-        print('✅ Feed created successfully');
         return ApiResponse.success(data, message: 'Feed created successfully');
       } else {
-        print('❌ Feed creation failed with status: ${response.statusCode}');
         return ApiResponse.error(
           data['message'] ?? 'Failed to create feed',
           message: 'Error',
         );
       }
     } catch (e) {
-      print('💥 Exception in createFeed: $e');
-      print('💥 Stack trace: ${StackTrace.current}');
       return ApiResponse.error('Network error: $e');
     }
   }

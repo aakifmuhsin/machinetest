@@ -45,14 +45,10 @@ class AuthProvider with ChangeNotifier {
         countryCode: countryCode,
         phone: phone,
       );
-      // Debug logs to inspect API response in console
-      print('verifyOtp success=' + response.success.toString() + ' message=' + response.message);
-      print('verifyOtp data=' + response.data.toString());
 
       if (response.success && response.data != null) {
         final dynamic tokenContainer = response.data!['token'] ?? response.data;
         final String? token = tokenContainer['access'] as String?;
-        print('parsed access token: ' + token.toString());
         if (token != null) {
           await _saveToken(token);
           _isLoading = false;

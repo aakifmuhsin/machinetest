@@ -94,27 +94,11 @@ class FeedProvider with ChangeNotifier {
     required String description,
     required List<int> categories,
   }) async {
-    print('🎬 FeedProvider.createFeed called');
-    if (kIsWeb) {
-      print('🌐 Web mode - using bytes');
-      print('📁 Video name: $videoName');
-      print('📁 Thumbnail name: $thumbnailName');
-      print('📁 Video bytes: ${videoBytes?.length} bytes');
-      print('📁 Thumbnail bytes: ${thumbnailBytes?.length} bytes');
-    } else {
-      print('📱 Mobile mode - using file paths');
-      print('📁 Video path: $videoPath');
-      print('📁 Thumbnail path: $thumbnailPath');
-    }
-    print('📝 Description: $description');
-    print('🏷️ Categories: $categories');
-    
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      print('📤 Calling ApiService.createFeed...');
       final response = await ApiService.createFeed(
         video: videoPath != null ? File(videoPath) : null,
         videoBytes: videoBytes,
@@ -126,27 +110,17 @@ class FeedProvider with ChangeNotifier {
         categories: categories,
       );
 
-      print('📥 ApiService response received');
-      print('✅ Success: ${response.success}');
-      print('📝 Message: ${response.message}');
-      print('📊 Data: ${response.data}');
-
       if (response.success) {
-        print('🔄 Reloading feeds after successful creation...');
         // Reload feeds after successful creation
         await loadFeeds();
-        print('✅ Feed creation completed successfully');
         return true;
       } else {
-        print('❌ Feed creation failed: ${response.message}');
         _error = response.message;
         _isLoading = false;
         notifyListeners();
         return false;
       }
     } catch (e) {
-      print('💥 Exception in FeedProvider.createFeed: $e');
-      print('💥 Stack trace: ${StackTrace.current}');
       _error = 'An error occurred: $e';
       _isLoading = false;
       notifyListeners();

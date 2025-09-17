@@ -474,12 +474,9 @@ class _AddFeedsScreenState extends State<AddFeedsScreen> {
   }
 
   Future<void> _pickVideo() async {
-    print('🎥 _pickVideo called');
     try {
       final XFile? video = await _imagePicker.pickVideo(source: ImageSource.gallery);
       if (video != null) {
-        print('✅ Video selected: ${video.path}');
-        print('📁 Video name: ${video.name}');
         
         if (kIsWeb) {
           // For web, read the file as bytes
@@ -489,7 +486,6 @@ class _AddFeedsScreenState extends State<AddFeedsScreen> {
             _selectedVideoName = video.name;
             _selectedVideo = null; // Not used on web
           });
-          print('📁 Video bytes loaded: ${bytes.length} bytes');
         } else {
           // For mobile, use File
           setState(() {
@@ -497,8 +493,6 @@ class _AddFeedsScreenState extends State<AddFeedsScreen> {
             _selectedVideoBytes = null;
             _selectedVideoName = video.name;
           });
-          print('📁 Video file created: ${_selectedVideo!.path}');
-          print('📁 Video file exists: ${_selectedVideo!.existsSync()}');
         }
       } else {
         print('❌ No video selected');
@@ -515,7 +509,6 @@ class _AddFeedsScreenState extends State<AddFeedsScreen> {
   }
 
   Future<void> _pickThumbnail() async {
-    print('🖼️ _pickThumbnail called');
     try {
       final XFile? image = await _imagePicker.pickImage(
         source: ImageSource.gallery,
@@ -523,8 +516,6 @@ class _AddFeedsScreenState extends State<AddFeedsScreen> {
         imageQuality: 90,
       );
       if (image != null) {
-        print('✅ Thumbnail selected: ${image.path}');
-        print('📁 Thumbnail name: ${image.name}');
         // Validate extension (server does not accept SVG)
         final String lowerName = image.name.toLowerCase();
         const allowedExts = [
@@ -533,7 +524,6 @@ class _AddFeedsScreenState extends State<AddFeedsScreen> {
         ];
         final bool isAllowed = allowedExts.any((ext) => lowerName.endsWith(ext));
         if (!isAllowed) {
-          print('❌ Disallowed thumbnail extension: $lowerName');
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
@@ -553,7 +543,6 @@ class _AddFeedsScreenState extends State<AddFeedsScreen> {
             _selectedThumbnailName = image.name;
             _selectedThumbnail = null; // Not used on web
           });
-          print('📁 Thumbnail bytes loaded: ${bytes.length} bytes');
         } else {
           // For mobile, use File
           setState(() {
@@ -561,14 +550,11 @@ class _AddFeedsScreenState extends State<AddFeedsScreen> {
             _selectedThumbnailBytes = null;
             _selectedThumbnailName = image.name;
           });
-          print('📁 Thumbnail file created: ${_selectedThumbnail!.path}');
-          print('📁 Thumbnail file exists: ${_selectedThumbnail!.existsSync()}');
         }
       } else {
         print('❌ No thumbnail selected');
       }
     } catch (e) {
-      print('💥 Error picking thumbnail: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error picking image: $e'),
@@ -579,15 +565,12 @@ class _AddFeedsScreenState extends State<AddFeedsScreen> {
   }
 
   Future<void> _handleSubmit() async {
-    print('📝 AddFeedsScreen._handleSubmit called');
     
     if (_isSubmitting) return; // Prevent multiple submissions
     
     if (!_formKey.currentState!.validate()) {
-      print('❌ Form validation failed');
       return;
     }
-    print('✅ Form validation passed');
     
     setState(() {
       _isSubmitting = true;
@@ -596,7 +579,6 @@ class _AddFeedsScreenState extends State<AddFeedsScreen> {
     try {
       if (kIsWeb) {
         if (_selectedVideoBytes == null) {
-          print('❌ No video selected (web)');
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Please select a video'),
@@ -605,10 +587,7 @@ class _AddFeedsScreenState extends State<AddFeedsScreen> {
           );
           return;
         }
-        print('✅ Video selected (web): ${_selectedVideoName}');
-        
         if (_selectedThumbnailBytes == null) {
-          print('❌ No thumbnail selected (web)');
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Please select a thumbnail'),
@@ -617,10 +596,8 @@ class _AddFeedsScreenState extends State<AddFeedsScreen> {
           );
           return;
         }
-        print('✅ Thumbnail selected (web): ${_selectedThumbnailName}');
       } else {
         if (_selectedVideo == null) {
-          print('❌ No video selected (mobile)');
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Please select a video'),
@@ -629,10 +606,8 @@ class _AddFeedsScreenState extends State<AddFeedsScreen> {
           );
           return;
         }
-        print('✅ Video selected (mobile): ${_selectedVideo!.path}');
         
         if (_selectedThumbnail == null) {
-          print('❌ No thumbnail selected (mobile)');
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Please select a thumbnail'),
@@ -641,11 +616,9 @@ class _AddFeedsScreenState extends State<AddFeedsScreen> {
           );
           return;
         }
-        print('✅ Thumbnail selected (mobile): ${_selectedThumbnail!.path}');
       }
 
       if (_selectedCategories.isEmpty) {
-        print('❌ No categories selected');
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Please select at least one category'),
@@ -654,9 +627,6 @@ class _AddFeedsScreenState extends State<AddFeedsScreen> {
         );
         return;
       }
-      print('✅ Categories selected: $_selectedCategories');
-
-      print('📤 Calling FeedProvider.createFeed...');
       final feedProvider = Provider.of<FeedProvider>(context, listen: false);
       
       final success = await feedProvider.createFeed(
@@ -670,10 +640,7 @@ class _AddFeedsScreenState extends State<AddFeedsScreen> {
         categories: _selectedCategories,
       );
 
-      print('📥 FeedProvider.createFeed result: $success');
-
       if (success && mounted) {
-        print('✅ Feed creation successful, showing success message');
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Feed created successfully!'),
@@ -682,7 +649,6 @@ class _AddFeedsScreenState extends State<AddFeedsScreen> {
         );
         Navigator.of(context).pop();
       } else if (mounted) {
-        print('❌ Feed creation failed: ${feedProvider.error}');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(feedProvider.error ?? 'Failed to create feed'),
